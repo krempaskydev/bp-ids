@@ -1,0 +1,12 @@
+{"scenario":"baseline_benign","phase":"start","timestamp":"2026-09-21T17:33:36.210Z","attack_category":"none","src_ip":"172.28.0.20","dst_ip":"172.28.0.10","tool":"benign-traffic"}
+{"scenario":"baseline_benign","phase":"end","timestamp":"2026-09-21T17:33:46.545Z"}
+{"scenario":"portscan","phase":"start","timestamp":"2026-09-21T17:33:51.555Z","attack_category":"recon","src_ip":"172.28.0.20","dst_ip":"172.28.0.10","tool":"nmap"}
+{"scenario":"portscan","phase":"end","timestamp":"2026-09-21T17:34:01.843Z"}
+{"scenario":"dos_synflood","phase":"start","timestamp":"2026-09-21T17:34:06.862Z","attack_category":"dos","src_ip":"172.28.0.20","dst_ip":"172.28.0.10","tool":"hping3"}
+{"scenario":"dos_synflood","phase":"end","timestamp":"2026-09-21T17:34:26.905Z"}
+{"scenario":"ssh_bruteforce","phase":"start","timestamp":"2026-09-21T17:34:31.909Z","attack_category":"credential_access","src_ip":"172.28.0.20","dst_ip":"172.28.0.10","tool":"hydra"}
+{"scenario":"ssh_bruteforce","phase":"end","timestamp":"2026-09-21T17:34:33.848Z"}
+{"scenario":"web_sqli","phase":"start","timestamp":"2026-09-21T17:34:39.127Z","attack_category":"web","src_ip":"172.28.0.20","dst_ip":"172.28.0.11","tool":"sqlmap"}
+{"scenario":"web_sqli","phase":"end","timestamp":"2026-09-21T17:34:39.496Z"}
+{"scenario":"web_scan_nikto","phase":"start","timestamp":"2026-09-21T17:34:44.500Z","attack_category":"web","src_ip":"172.28.0.20","dst_ip":"172.28.0.11","tool":"nikto"}
+{"scenario":"web_scan_nikto","phase":"end","timestamp":"2026-09-21T17:34:47.080Z"}

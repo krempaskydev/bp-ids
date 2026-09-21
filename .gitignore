@@ -1,0 +1,10 @@
+# Docker runtime data
+compose/**/node_modules/
+
+# Docker volumes (evebox data) sa netrackuju - su Docker volumes, nie subory
+
+# Docasne/session subory generovane pri behu utokov
+results/dvwa_cookies.txt
+
+# OS
+.DS_Store

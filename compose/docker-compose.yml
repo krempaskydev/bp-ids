@@ -1,0 +1,65 @@
+services:
+  victim:
+    build: ./victim
+    container_name: victim
+    hostname: victim
+    networks:
+      idsnet:
+        ipv4_address: 172.28.0.10
+    ports:
+      - "2222:22"
+      - "8080:80"
+      - "2121:21"
+    tty: true
+
+  dvwa:
+    image: vulnerables/web-dvwa
+    container_name: dvwa
+    hostname: dvwa
+    networks:
+      idsnet:
+        ipv4_address: 172.28.0.11
+    ports:
+      - "8081:80"
+
+  attacker:
+    build: ./attacker
+    container_name: attacker
+    hostname: attacker
+    networks:
+      idsnet:
+        ipv4_address: 172.28.0.20
+    volumes:
+      - ../scripts:/scripts
+      - ../results:/results
+    tty: true
+    stdin_open: true
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+
+  evebox:
+    image: jasonish/evebox:latest
+    container_name: evebox
+    command: >
+      evebox server --host 0.0.0.0 --database sqlite --no-auth --no-tls
+      -D /data --end /var/log/suricata/eve.json
+    volumes:
+      - /var/log/suricata:/var/log/suricata:ro
+      - evebox_data:/data
+    ports:
+      - "5636:5636"
+    # nie je sucastou idsnet - EveBox len cita subor eve.json z hostitela,
+    # nepotrebuje pristup k testovacej sieti
+
+volumes:
+  evebox_data:
+
+networks:
+  idsnet:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-idsnet
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
