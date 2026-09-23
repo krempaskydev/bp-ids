@@ -1,7 +1,8 @@
 scenario,category,detected,latency_s,alert_count,role,top_signatures
-baseline_benign,none,N/A,N/A,11,FP zdroj (benigna prevadzka),GPL ICMP PING *NIX (10x); ET INFO POSSIBLE Web Crawl using Curl (1x)
-portscan,recon,ANO,0.085,48,utok,ET SCAN Nmap Scripting Engine User-Agent Detected (Nmap Scripting Engine) (25x); SURICATA ICMPv4 unknown code (4x); SURICATA TLS invalid record type (4x)
-dos_synflood,dos,ANO,0.269,1633,utok,SURICATA STREAM 3way handshake SYN resend different seq on SYN recv (809x); SURICATA STREAM 3way handshake SYNACK resend with different ack (798x); SURICATA STREAM Packet with invalid timestamp (15x)
-ssh_bruteforce,credential_access,ANO,0.276,1,utok,ET SCAN LibSSH Based Frequent SSH Connections Likely BruteForce Attack (1x)
-web_sqli,web,ANO,0.159,7,utok,ET WEB_SERVER Possible MySQL SQLi Attempt Information Schema Access (3x); ET SCAN Sqlmap SQL Injection Scan (2x); ET WEB_SERVER ATTACKER SQLi - SELECT and Schema Columns M1 (2x)
-web_scan_nikto,web,ANO,0.127,755,utok,ET WEB_SERVER Script tag in URI Possible Cross Site Scripting Attempt (267x); ET WEB_SERVER /etc/passwd Detected in URI (153x); ET WEB_SERVER Exploit Suspected PHP Injection Attack (cmd=) (41x)
+baseline_benign,none,N/A,N/A,66,FP zdroj (benigna prevadzka),GPL ICMP PING *NIX (30x); SURICATA HTTP Response excessive header repetition (30x); ET INFO POSSIBLE Web Crawl using Curl (2x)
+portscan,recon,ANO,0.101,47,utok,ET SCAN Nmap Scripting Engine User-Agent Detected (Nmap Scripting Engine) (25x); SURICATA ICMPv4 unknown code (4x); SURICATA TLS invalid record type (4x)
+portscan_low_and_slow,recon_evasion,NIE,N/A,0,utok,
+dos_synflood,dos,ANO,0.023,1728,utok,SURICATA STREAM 3way handshake SYN resend different seq on SYN recv (857x); SURICATA STREAM 3way handshake SYNACK resend with different ack (855x); SURICATA STREAM Packet with invalid timestamp (11x)
+ssh_bruteforce,credential_access,ANO,0.312,2,utok,LOCAL POLICY Possible fast TCP port scan (threshold) (1x); ET SCAN LibSSH Based Frequent SSH Connections Likely BruteForce Attack (1x)
+web_sqli,web,ANO,0.155,142,utok,LOCAL POLICY External access to DVWA vulnerable test endpoint (89x); ET WEB_SERVER SQL Errors in HTTP 200 Response (error in your SQL syntax) (18x); ET WEB_SERVER Possible MySQL SQLi Attempt Information Schema Access (8x)
+web_scan_nikto,web,ANO,0.124,759,utok,ET WEB_SERVER Script tag in URI Possible Cross Site Scripting Attempt (267x); ET WEB_SERVER /etc/passwd Detected in URI (152x); ET WEB_SERVER Exploit Suspected PHP Injection Attack (cmd=) (41x)

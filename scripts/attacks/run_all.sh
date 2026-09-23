@@ -20,6 +20,12 @@ echo "############################################"
 sleep 5
 
 echo "############################################"
+echo "# 1b. Low-and-slow port scan (ocakavane NEDETEKOVANE - FN scenar)"
+echo "############################################"
+/scripts/attacks/06_portscan_slow.sh
+sleep 5
+
+echo "############################################"
 echo "# 2. DoS - SYN flood"
 echo "############################################"
 /scripts/attacks/02_dos_synflood.sh
