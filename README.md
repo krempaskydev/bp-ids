@@ -68,8 +68,13 @@ vlastné pravidlá**, ktoré demonštrujú samostatný "implementačný" prínos
    ten by pri SYN floode vygeneroval alert na *každý* ďalší paket po
    dosiahnutí prahu, čo sme si počas ladenia reálne overili: prvá verzia
    pravidla vyprodukovala 2,3 milióna alertov na jeden 20-sekundový flood).
-   Práve toto pravidlo je zámerne navrhnuté tak, aby ho útočník mohol
-   obísť spomalením — pozri scenár 6 nižšie.
+   Toto pravidlo je zámerne navrhnuté tak, aby ho útočník mohol obísť
+   spomalením — pozri scenár 6 nižšie. **Poznámka k interpretácii:** podľa
+   `metrics.csv` sa toto pravidlo v behu spustilo na okno `ssh_bruteforce`
+   (hydra otvára viacero paralelných SSH spojení rýchlo za sebou), nie
+   výrazne na bežný `portscan` — ten je detekovaný predovšetkým cez ET
+   signatúru založenú na NSE/User-Agent (pozri sekciu 9, kde je to
+   rozvedené).
 
 ## 4. Adresárová štruktúra
 
@@ -219,14 +224,43 @@ nezachytí** — bez toho totiž recall 100 % pôsobí triviálne (pri 52 830
 pravidlách a "hlučných" nástrojoch typu nmap/nikto je takmer isté, že aspoň
 jedno pravidlo niečo zachytí).
 
-**Princíp:** `06_portscan_slow.sh` spúšťa holý SYN scan (`nmap -sS`, bez
-`-sV/-A`, teda bez NSE/User-Agent stôp) s vloženým odstupom 3 sekundy medzi
-paketmi (`--scan-delay 3s`). Naše vlastné prahové pravidlo (sekcia 3, bod 2)
-vyžaduje 5 SYN paketov v 5-sekundovom okne — pri 3s odstupe medzi paketmi sa
-tento prah nikdy nedosiahne.
+**Princíp — uniká DVOM detekčným vrstvám naraz, nie len jednej:**
+
+Podľa `metrics.csv` je bežný (rýchly) port scan (scenár `portscan`) detekovaný
+**predovšetkým** cez ET signatúru `ET SCAN Nmap Scripting Engine User-Agent
+Detected` (25× z 47 alertov) — tá pochádza z prepínačov `-sV`/`-A` (service/
+OS detekcia cez NSE skripty, ktoré do HTTP requestu vložia rozpoznateľný
+User-Agent). Naše vlastné prahové pravidlo (sekcia 3, bod 2) sa v tomto behu
+na `portscan` okne výrazne neuplatnilo — zaujímavo sa namiesto toho spustilo
+v okne scenára `ssh_bruteforce` (pozri poznámku nižšie).
+
+`06_portscan_slow.sh` preto zámerne obchádza **obe** vrstvy naraz:
+
+1. **Vynecháva `-sV`/`-A`** → žiadne NSE/User-Agent stopy → ET signatúra
+   založená na User-Agente sa vôbec nemá na čom spustiť.
+2. **Pridáva odstup `--scan-delay 3s` medzi paketmi** → naše vlastné prahové
+   pravidlo (5 SYN paketov v 5-sekundovom okne) tento prah nikdy nedosiahne.
+
+Keby scan obišiel len jednu z týchto dvoch vrstiev (napr. holý `-sS` scan bez
+spomalenia), narazil by na prahové pravidlo. Keby bol len spomalený, ale s
+`-sV/-A`, narazil by na ET User-Agent signatúru. Až kombinácia oboch techník
+naraz vedie k reálnemu úniku.
 
 **Výsledok:** 0 alertov, útok prešiel bez povšimnutia — reálny, poctivo
 nameraný False Negative.
+
+**Vedľajšie zistenie (dobrý bod do diskusie):** vlastné prahové pravidlo
+"port scan" sa v skutočnosti spustilo na scenári `ssh_bruteforce`, nie na
+scenári `portscan` — hydra pri brute-force útoku otvára viacero paralelných
+SSH spojení rýchlo za sebou, čo tiež spĺňa vzorec "5+ SYN paketov z jedného
+zdroja za 5 sekúnd" na porte 22. Ukazuje to typickú vlastnosť signature/
+threshold-based pravidiel: jedno pravidlo často pokrýva viac tried útoku
+naraz a jeho názov ("port scan") nemusí presne vystihovať, čo reálne
+zachytilo — pravidlo formálne nedetekovalo "skenovanie portov", ale
+"nezvyčajne rýchle nadväzovanie TCP spojení na jeden cieľový port", čo sa
+zhoduje aj s charakterom SSH brute-force útoku. Pri písaní práce je preto
+presnejšie hovoriť o "prahovom pravidle na rýchle opakované TCP spojenia"
+než o "pravidle na detekciu port scanu".
 
 **Prečo je to hodnotné pre BP:** demonštruje to konkrétne a merateľné
 obmedzenie signature/threshold-based prístupu, ktoré je vhodné rozvinúť v

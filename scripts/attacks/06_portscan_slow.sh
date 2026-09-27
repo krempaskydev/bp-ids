@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # Scenar 6: "Low-and-slow" port scan - zamerne navrhnuty tak, aby unikol
-# detekcii. Pouziva len holy SYN scan (bez -sV/-A, teda ziadne NSE/User-
-# -Agent signatury) a vlozeny odstup medzi paketmi vacsi ako prahove okno
-# nasho vlastneho pravidla LOCAL POLICY Possible fast TCP port scan
-# (5 SYN / 5s, viz rules/local.rules). Cielom je demonstrovat realne
-# obmedzenie signature/threshold-based IDS: utocnik, ktory spomali svoju
-# cinnost pod prah pravidla, ostane nepovsimnuty.
+# DVOM detekcnym vrstvam naraz (nie len jednej - podla metrics.csv je bezny
+# rychly portscan detekovany predovsetkym cez ET SCAN Nmap Scripting Engine
+# User-Agent Detected, teda cez NSE/-sV/-A stopy, nie primarne cez nase
+# prahove pravidlo):
+#   1. Ziadne -sV/-A => ziadne NSE/User-Agent stopy => ET signatura
+#      zalozena na User-Agente sa nema na com spustit.
+#   2. --scan-delay 3s => nase vlastne prahove pravidlo LOCAL POLICY
+#      Possible fast TCP port scan (5 SYN / 5s, viz rules/local.rules)
+#      tento prah nikdy nedosiahne.
+# Az kombinacia oboch technik naraz vedie k realnemu unikanu detekcii.
 #
 # OCAKAVANY VYSLEDOK: 0 alertov (False Negative) - toto je zamerne a je to
 # hlavny bod diskusie v kap. 5 (limity signature-based pristupu).
