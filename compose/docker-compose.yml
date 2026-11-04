@@ -6,21 +6,23 @@ services:
     networks:
       idsnet:
         ipv4_address: 172.28.0.10
+    # Porty su naviazane LEN na localhost hostitela (127.0.0.1) - testovacia
+    # siet ostava izolovana od LAN/WiFi. Utoky aj benigna prevadzka bezia
+    # vnutri siete idsnet, tieto porty sluzia len na rucne prezeranie.
     ports:
-      - "2222:22"
-      - "8080:80"
-      - "2121:21"
+      - "127.0.0.1:2222:22"
+      - "127.0.0.1:8080:80"
     tty: true
 
   dvwa:
-    image: vulnerables/web-dvwa
+    image: vulnerables/web-dvwa:latest
     container_name: dvwa
     hostname: dvwa
     networks:
       idsnet:
         ipv4_address: 172.28.0.11
     ports:
-      - "8081:80"
+      - "127.0.0.1:8081:80"
 
   attacker:
     build: ./attacker
@@ -38,8 +40,22 @@ services:
       - NET_RAW
       - NET_ADMIN
 
+  # Legitimny pouzivatel siete - generuje benignu prevadzku NA POZADI pocas
+  # celeho testu (web, DNS, SSH, FTP). Ma vlastnu IP, takze alerty sa daju
+  # jednoznacne priradit: 172.28.0.20 = utok, 172.28.0.30 = benigna prevadzka.
+  client:
+    build: ./attacker          # rovnaky image (curl, dig, sshpass), bez NET_RAW
+    container_name: client
+    hostname: client
+    networks:
+      idsnet:
+        ipv4_address: 172.28.0.30
+    volumes:
+      - ../scripts:/scripts:ro
+    tty: true
+
   evebox:
-    image: jasonish/evebox:latest
+    image: jasonish/evebox:0.29.0
     container_name: evebox
     command: >
       evebox server --host 0.0.0.0 --database sqlite --no-auth --no-tls
@@ -48,7 +64,8 @@ services:
       - /var/log/suricata:/var/log/suricata:ro
       - evebox_data:/data
     ports:
-      - "5636:5636"
+      # --no-auth => dashboard smie byt dostupny iba z hostitela
+      - "127.0.0.1:5636:5636"
     # nie je sucastou idsnet - EveBox len cita subor eve.json z hostitela,
     # nepotrebuje pristup k testovacej sieti
 

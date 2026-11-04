@@ -9,7 +9,7 @@ PHPSESSID=$(grep -oP "PHPSESSID\s+\K\S+" /results/dvwa_cookies.txt)
 COOKIE="security=low; PHPSESSID=${PHPSESSID}"
 
 SCENARIO="web_sqli"
-log_event "$SCENARIO" "start" "\"attack_category\":\"web\",\"src_ip\":\"172.28.0.20\",\"dst_ip\":\"172.28.0.11\",\"tool\":\"sqlmap\""
+log_event "$SCENARIO" "start" "web" "172.28.0.11" "sqlmap" "TA0001/T1190"
 
 # --drop-set-cookie: server pri presmerovani na login.php ponuka nove
 # (neprihlasene) cookies - bez tejto volby by ich sqlmap v --batch rezime

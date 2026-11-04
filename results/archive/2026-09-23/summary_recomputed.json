@@ -1,0 +1,68 @@
+{
+  "run": "run_0923",
+  "profile": "?",
+  "core_scenarios": 5,
+  "TP": 5,
+  "FN": 0,
+  "FP": 11,
+  "TN": 1,
+  "precision": 0.3125,
+  "recall": 1.0,
+  "f1": 0.47619047619047616,
+  "fpr": 0.9166666666666666,
+  "evasion": {
+    "portscan_low_and_slow": false
+  },
+  "tp_alerts": 2678,
+  "fp_alerts": 66,
+  "alert_precision": 0.9759475218658892,
+  "fp_alerts_per_min": 19.311515222448172,
+  "benign_minutes": 3.42,
+  "unattributed_attacker_alerts": 2,
+  "other_alerts": 0,
+  "latency_s": {
+    "portscan": 0.099607,
+    "portscan_low_and_slow": null,
+    "dos_synflood": 0.023308,
+    "ssh_bruteforce": 0.311907,
+    "web_sqli": 0.154557,
+    "web_scan_nikto": 0.124068
+  },
+  "scenarios": {
+    "baseline_benign": {
+      "detected": "N/A",
+      "alerts": 66,
+      "type": "baseline"
+    },
+    "portscan": {
+      "detected": "ANO",
+      "alerts": 47,
+      "type": "core"
+    },
+    "portscan_low_and_slow": {
+      "detected": "NIE",
+      "alerts": 0,
+      "type": "evasion"
+    },
+    "dos_synflood": {
+      "detected": "ANO",
+      "alerts": 1728,
+      "type": "core"
+    },
+    "ssh_bruteforce": {
+      "detected": "ANO",
+      "alerts": 2,
+      "type": "core"
+    },
+    "web_sqli": {
+      "detected": "ANO",
+      "alerts": 142,
+      "type": "core"
+    },
+    "web_scan_nikto": {
+      "detected": "ANO",
+      "alerts": 759,
+      "type": "core"
+    }
+  }
+}

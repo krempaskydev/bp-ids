@@ -4,7 +4,7 @@ set -e
 source /scripts/attacks/lib.sh
 
 SCENARIO="portscan"
-log_event "$SCENARIO" "start" "\"attack_category\":\"recon\",\"src_ip\":\"172.28.0.20\",\"dst_ip\":\"172.28.0.10\",\"tool\":\"nmap\""
+log_event "$SCENARIO" "start" "recon" "172.28.0.10" "nmap" "TA0043/T1595, TA0007/T1046"
 
 nmap -sS -T4 -p- 172.28.0.10
 nmap -sV -A -p 21,22,80 172.28.0.10
