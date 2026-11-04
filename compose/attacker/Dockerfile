@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     python3-requests \
     openssh-client \
     sshpass \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root

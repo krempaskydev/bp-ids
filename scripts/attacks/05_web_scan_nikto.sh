@@ -4,7 +4,7 @@ set -e
 source /scripts/attacks/lib.sh
 
 SCENARIO="web_scan_nikto"
-log_event "$SCENARIO" "start" "\"attack_category\":\"web\",\"src_ip\":\"172.28.0.20\",\"dst_ip\":\"172.28.0.11\",\"tool\":\"nikto\""
+log_event "$SCENARIO" "start" "recon" "172.28.0.11" "nikto" "TA0043/T1595.002"
 
 nikto -h http://172.28.0.11/ || true
 

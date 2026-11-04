@@ -1,319 +1,309 @@
 # BP: Návrh a implementácia IDS v lokálnej sieti — zhrnutie projektu
 
 Tento dokument zhŕňa, čo bolo postavené, ako to funguje a ako to spustiť. Slúži
-ako referencia pri písaní samotnej bakalárskej práce (kapitoly 3–5).
+ako referencia pri písaní bakalárskej práce (kapitoly 3–5). Mapovanie na
+osnovu je v sekcii 10.
 
-## 1. Architektúra
+## 1. Architektúra (kap. 3.1, 3.2)
 
 ```
-                    Hostiteľ (Ubuntu, tvoje PC)
-                    ┌─────────────────────────────────────┐
-                    │  Suricata (systemd služba)            │
-                    │  sleduje rozhranie br-idsnet           │
-                    │  ET-open + vlastné pravidlá (local.rules)│
-                    │  → /var/log/suricata/eve.json          │
-                    └───────────────┬─────────────────────┘
-                                    │ (af-packet, pasívne sledovanie)
-        ┌───────────────────────────┴───────────────────────────┐
-        │              Docker sieť "idsnet" (172.28.0.0/24)       │
-        │                     most br-idsnet                      │
-        │                                                          │
-        │   attacker            victim              dvwa            │
-        │   172.28.0.20         172.28.0.10          172.28.0.11     │
-        │   nmap, hping3,       SSH, FTP, HTTP        DVWA (web app  │
-        │   hydra, nikto,       (zámerne slabé        so zraniteľ-  │
-        │   sqlmap              heslá pre testy)      nosťami)      │
-        └──────────────────────────────────────────────────────────┘
+                    Hostiteľ (Ubuntu)
+                    ┌──────────────────────────────────────────┐
+                    │  Suricata 8.0.7 (systemd služba)           │
+                    │  af-packet na rozhraní br-idsnet (pasívne) │
+                    │  ET Open + vlastné pravidlá (local.rules)  │
+                    │  → /var/log/suricata/eve.json              │
+                    └───────────────┬──────────────────────────┘
+                                    │
+        ┌───────────────────────────┴──────────────────────────────┐
+        │          Docker sieť "idsnet" (172.28.0.0/24), most br-idsnet │
+        │                                                               │
+        │  attacker 172.28.0.20   client 172.28.0.30                    │
+        │  nmap, hping3, hydra,   benígna prevádzka na pozadí            │
+        │  nikto, sqlmap          (web, DNS, SSH, FTP, ICMP)             │
+        │                                                               │
+        │  victim 172.28.0.10                 dvwa 172.28.0.11           │
+        │  SSH, FTP (pasv 30000-30010),       DVWA (zraniteľná web app) │
+        │  HTTP, DNS (dnsmasq, zóna .lab)                                │
+        └───────────────────────────────────────────────────────────────┘
 
-  EveBox (Docker kontajner) — dashboard na porte 5636, číta eve.json
+  EveBox 0.29.0 (Docker) — prehliadanie alertov, http://127.0.0.1:5636
 ```
 
-**Prečo Docker namiesto VirtualBox/GNS3:** pri zakladaní projektu bolo k
-dispozícii len ~27 GB voľného miesta, Docker kontajnery sú rádovo ľahšie ako
-plné VM a zachovávajú si sieťovú izoláciu potrebnú pre realistický test.
+**Umiestnenie senzora (3.2):** Suricata beží na hostiteľovi a pasívne číta
+rozhranie mosta `br-idsnet`, cez ktorý ide všetka komunikácia medzi
+kontajnermi. To zodpovedá nasadeniu NIDS na SPAN/mirror porte pred
+chránenými servermi: senzor vidí celú prevádzku segmentu a nie je v ceste
+(IDS, nie inline IPS).
 
-**Dôležitý architektonický detail (dobrý bod do kap. 3):** `HOME_NET` v
-Suricate je nastavený **len** na `victim` a `dvwa` (172.28.0.10,
-172.28.0.11). Útočník (172.28.0.20) tak spadá pod `EXTERNAL_NET` — presne ako
-v reálnom nasadení, kde útočník prichádza "zvonka" na chránené servery. Veľa
-ET-open pravidiel je písaných práve pre smer `EXTERNAL_NET → HOME_NET` a bez
-tohto nastavenia by vôbec nefungovali (pozri sekciu 8 — dokumentované chyby).
+**Izolácia:** porty kontajnerov sú publikované iba na `127.0.0.1`
+hostiteľa (nie na LAN/WiFi). Útoky aj benígna prevádzka bežia vnútri `idsnet`.
+
+**Prečo Docker namiesto plných VM:** pri zakladaní projektu bolo
+k dispozícii ~27 GB voľného miesta. Kontajnery (kontajnerová virtualizácia)
+sú rádovo ľahšie ako VM a zachovávajú sieťovú izoláciu (vlastný most,
+samostatné sieťové menné priestory). Kompromis: zdieľané jadro (pozri 5.5).
+
+**HOME_NET:** nastavený **len** na chránené servery `victim` a `dvwa`
+(172.28.0.10, 172.28.0.11). Útočník aj klient spadajú pod `EXTERNAL_NET`
+— presne ako v reálnom nasadení, kde používatelia aj útočníci prichádzajú
+„zvonka“ na chránené servery. Veľa ET pravidiel je písaných pre smer
+`EXTERNAL_NET → HOME_NET` a bez tohto nastavenia by nefungovali (sekcia 11).
 
 ## 2. Komponenty
 
 | Komponent | Nástroj | Poznámka |
 |---|---|---|
-| IDS jadro | Suricata 8.0.7 | af-packet mód, beží ako systemd služba priamo na hostiteľovi |
-| Pravidlá | Emerging Threats Open (ET-open) + vlastné (`local.rules`) | 52 828 ET pravidiel + 2 vlastné (spolu 52 830) |
-| Dashboard | EveBox 0.29.0 | Docker kontajner, SQLite backend (bez ťažkého ELK), http://localhost:5636 |
-| Testovacia sieť | Docker Compose | 3 kontajnery: victim, dvwa, attacker |
-| Cieľ útokov | victim (vlastný Ubuntu image) | SSH (slabé heslo testuser/testpass123), FTP (anonymous), Apache |
-| Cieľ webových útokov | dvwa (`vulnerables/web-dvwa`) | DVWA v1.10, security level "low" |
-| Útočné nástroje | nmap, hping3, hydra, nikto, sqlmap | v attacker kontajneri, izolované od hostiteľa |
-| Vyhodnotenie | `scripts/evaluate.py` | počíta TP/FP/FN, precision, recall, latenciu |
+| IDS jadro | Suricata 8.0.7 | af-packet, systemd služba na hostiteľovi |
+| Pravidlá | ET Open + vlastné | 52 828 ET pravidiel + 2 vlastné (profil *pred*) / 3 vlastné (profil *po*) |
+| Ladenie FP | `threshold.config` | len v profile *po*, pozri sekciu 3 |
+| Prehliadanie alertov | EveBox 0.29.0 | SQLite backend, nenáročné nasadenie; nemá plnohodnotné dashboardy (5.5) |
+| Testovacia sieť | Docker Compose | victim, dvwa, attacker, client |
+| Benígna prevádzka | `scripts/benign/benign_traffic.sh` | v kontajneri `client`, beží počas celého experimentu |
+| Automatizácia (4.5) | `scripts/run_experiment.sh` | N behov × všetky scenáre + vyhodnotenie |
+| Vyhodnotenie | `scripts/evaluate.py`, `scripts/aggregate.py` | TP/FP/FN/TN, precision, recall, F1, FPR, latencia, priemer ± SD |
 
-## 3. Vlastné Suricata pravidlá (`rules/local.rules`)
+## 3. Pravidlá a ich ladenie (kap. 3.4, 4.3, 5.3)
 
-Nad rámec nasadenia hotového ET-open rulesetu obsahuje projekt aj **dve
-vlastné pravidlá**, ktoré demonštrujú samostatný "implementačný" prínos:
+Dva profily vlastných pravidiel, prepínané skriptom `scripts/09_set_profile.sh before|after`:
 
-1. **`LOCAL POLICY External access to DVWA vulnerable test endpoint`** —
-   politikové pravidlo: akýkoľvek prístup z `EXTERNAL_NET` na cestu
-   `/vulnerabilities/` je v produkčnom nasadení podozrivý sám o sebe, bez
-   ohľadu na konkrétny payload (vývojárske/demo endpointy by nemali byť
-   prístupné zvonka).
-2. **`LOCAL POLICY Possible fast TCP port scan (threshold)`** — prahové
-   pravidlo: 5 a viac SYN paketov z jedného zdroja voči chráneným hostom
-   behom 5 sekúnd. Používa `threshold:type both` (nie `detection_filter` —
-   ten by pri SYN floode vygeneroval alert na *každý* ďalší paket po
-   dosiahnutí prahu, čo sme si počas ladenia reálne overili: prvá verzia
-   pravidla vyprodukovala 2,3 milióna alertov na jeden 20-sekundový flood).
-   Toto pravidlo je zámerne navrhnuté tak, aby ho útočník mohol obísť
-   spomalením — pozri scenár 6 nižšie. **Poznámka k interpretácii:** podľa
-   `metrics.csv` sa toto pravidlo v behu spustilo na okno `ssh_bruteforce`
-   (hydra otvára viacero paralelných SSH spojení rýchlo za sebou), nie
-   výrazne na bežný `portscan` — ten je detekovaný predovšetkým cez ET
-   signatúru založenú na NSE/User-Agent (pozri sekciu 9, kde je to
-   rozvedené).
+| | Profil **pred** (`rules/local.rules`) | Profil **po** (`rules/tuned/`) |
+|---|---|---|
+| sid 9000001 | prístup zvonka na `/vulnerabilities/` (politika) | bez zmeny |
+| sid 9000002 | ≥ 5 SYN / 5 s zo zdroja | ≥ **10** SYN / 5 s (rev 2) |
+| sid 9000003 | — | SYN na **nepoužívané porty**, ≥ 10 / **120 s** (detekcia pomalého scanu) |
+| `threshold.config` | prázdny | suppress `GPL ICMP PING *NIX` (2100366), `HTTP Response excessive header repetition` z DVWA (2221036), `ET INFO Web Crawl using Curl` (2002825) |
+
+**Prečo tieto zmeny:** dáta zo starého behu (2026-09-23, prepočítané z
+`eve.json`, `results/archive/2026-09-23/`) ukázali:
+- 60 zo 66 FP alertov tvorili dve informačné signatúry (ping, hlavičky odpovedí DVWA),
+- pravidlo 9000002 sa spustilo v **6 zo 7 okien**, ale aj 1× na benígnom FTP
+  (pasívny režim = 2 spojenia na listing) a 1× pri prihlásení do DVWA.
+  **Pôvodné tvrdenie, že sa spustilo „len na ssh_bruteforce“, bolo
+  nesprávne** — vzniklo z top-3 súhrnu v `metrics.csv` (sekcia 11, bod 7),
+- low-and-slow scan neprešiel žiadnym pravidlom.
+
+**Pravidlo 9000003 — princíp:** chránené servery majú definované služby
+(21, 22, 53, 80, pasívne FTP 30000–30010). SYN na iný port legitímny klient
+neposiela, skener áno. Preto môže mať pravidlo dlhé okno a nízky prah
+bez FP — a zachytí aj scan spomalený pod prah pravidla 9000002.
+Limit: odstup > 12 s medzi paketmi prah 10/120 s opäť obíde (sekcia 9).
+
+Postup ladenia pre prácu: beh *pred* → v `results/runs/before_*/signatures.csv`
+pozri riadky `role=benign` → každú FP signatúru buď potlač (zdôvodni), alebo
+ponechaj a prizná v práci → beh *po* → `results/comparison.md`.
+
+**`threshold:type both` (nie `detection_filter`):** prvá verzia pravidla
+9000002 s `detection_filter` vygenerovala 2,3 milióna alertov na jeden
+20-sekundový SYN flood (alert na každý paket po dosiahnutí prahu).
+`type both` = alert po dosiahnutí prahu a najviac 1× za okno.
 
 ## 4. Adresárová štruktúra
 
 ```
 bp-ids/
 ├── compose/
-│   ├── docker-compose.yml      # definícia siete a kontajnerov
-│   ├── victim/Dockerfile       # SSH+FTP+HTTP server so slabými heslami
-│   └── attacker/Dockerfile     # nmap, hping3, hydra, nikto, sqlmap
+│   ├── docker-compose.yml       # sieť idsnet + victim, dvwa, attacker, client, evebox
+│   ├── victim/                  # SSH+FTP+HTTP+DNS so slabou konfiguráciou
+│   └── attacker/Dockerfile      # nástroje útočníka (rovnaký image používa client)
 ├── rules/
-│   └── local.rules              # vlastné Suricata pravidlá (viz sekcia 3)
+│   ├── local.rules              # profil "pred ladením"
+│   └── tuned/                   # profil "po ladení": local.rules + threshold.config
 ├── scripts/
-│   ├── 00-08_*.sh                # jednorazové inštalačné/opravné skripty (host)
-│   ├── attacks/
-│   │   ├── lib.sh                 # spoločné logovanie časov útokov
-│   │   ├── 00_baseline.sh         # benígna prevádzka (meranie FP, ~2-3 min)
-│   │   ├── 01_portscan.sh         # nmap SYN scan + service/OS detekcia
-│   │   ├── 02_dos_synflood.sh     # hping3 SYN flood (20s)
-│   │   ├── 03_ssh_bruteforce.sh   # hydra brute-force na SSH
-│   │   ├── 04_web_sqli.sh         # sqlmap SQL injection na DVWA
-│   │   ├── 05_web_scan_nikto.sh   # nikto sken zraniteľností
-│   │   ├── 06_portscan_slow.sh    # "low-and-slow" scan (zámerne NEdetekovaný)
-│   │   ├── dvwa_setup.sh          # pomocný: prihlásenie + reset DB v DVWA
-│   │   └── run_all.sh             # spustí všetky scenáre za sebou
-│   └── evaluate.py               # vyhodnotenie: TP/FP/FN, precision, recall, latencia
+│   ├── 00–08_*.sh               # pôvodné inštalačné/opravné skripty (história, sekcia 5)
+│   ├── 09_set_profile.sh        # prepnutie profilu pravidiel before|after (sudo)
+│   ├── 10_fix_log_rotation.sh   # logrotate pre eve.json (sudo)
+│   ├── run_experiment.sh        # automatizácia: N behov + vyhodnotenie + agregácia
+│   ├── evaluate.py              # vyhodnotenie jedného behu
+│   ├── aggregate.py             # priemer ± SD cez behy, porovnanie pred/po
+│   ├── benign/benign_traffic.sh # benígna prevádzka (kontajner client)
+│   └── attacks/
+│       ├── lib.sh               # ground truth: zápis časov, cieľa, nástroja, MITRE
+│       ├── run_all.sh           # všetky scenáre za sebou (kontajner attacker)
+│       ├── 00_baseline.sh       # čisté benígne okno 3 min (útočník nečinný)
+│       ├── 01_portscan.sh … 05_web_scan_nikto.sh
+│       ├── 06a_portscan_fast_control.sh   # kontrola k scenáru 6
+│       ├── 06_portscan_slow.sh            # evázia: časové rozloženie
+│       ├── 07_portscan_fragmented.sh      # evázia: fragmentácia
+│       └── dvwa_setup.sh        # prihlásenie + reset DB v DVWA
 ├── results/
-│   ├── attack_log.jsonl         # "ground truth" - presné časy každého útoku
-│   └── metrics.csv              # výstup evaluate.py
-└── docs/                        # voľný priečinok pre tvoje poznámky/screenshoty
+│   ├── runs/<profil>_r<N>_<čas>/   # attack_log.jsonl, meta.json, metrics.csv,
+│   │                               # signatures.csv, summary.json
+│   ├── aggregate_before.md, aggregate_after.md, comparison.md
+│   └── archive/2026-09-23/         # historický beh (pôvodná metodika)
+└── docs/                        # osnova, príprava na obhajobu
 ```
 
-## 5. Ako to spustiť odznova (setup)
+## 5. Setup (kap. 4.1, 4.2)
 
 ```bash
-# 1. Zakladne baliky, Docker, Suricata, utocne nastroje
 cd ~/Documents/bp-ids/scripts
-./00_install_base.sh
+./00_install_base.sh            # Docker, Suricata, nástroje
 ./01_install_attack_tools.sh
+./02_fix_suricata.sh            # systemd-tmpfiles bug Ubuntu balíka
+./03_configure_suricata.sh      # af-packet na br-idsnet, suricata-update (ET Open)
+./04_grant_log_access.sh        # ACL na logy
+./05_fix_homenet.sh             # HOME_NET = victim + dvwa (príp. 05b podľa indentácie)
+./07_apply_fixes.sh             # local.rules do rule-files
+./10_fix_log_rotation.sh        # NOVÉ: funkčná rotácia eve.json
+./09_set_profile.sh before      # NOVÉ: profil pravidiel
 
-# 2. Oprava Suricata balika (systemd-tmpfiles bug v Ubuntu balicku)
-./02_fix_suricata.sh
-
-# 3. Konfiguracia Suricaty - sledovanie Docker siete, stiahnutie ET-open pravidiel
-./03_configure_suricata.sh
-
-# 4. Pristupove prava na logy (ACL, aby si nemusel stale pouzivat sudo)
-./04_grant_log_access.sh
-
-# 5. Spravne nastavenie HOME_NET (dolezite pre spravnu detekciu!)
-./05_fix_homenet.sh   # prip. 05b_fix_homenet_retry.sh podla indentacie yaml
-
-# 6. GitHub CLI + prihlasenie (ak chces pushovat zmeny)
-./06_install_gh_and_login.sh
-
-# 7. Vlastne pravidla + log rotation + cisty log
-./07_apply_fixes.sh    # prip. 07b_fix_local_rules.sh + 08_reload_rules.sh
-                        # ak sa pri prvom pokuse nepodari nacitat pravidla
-
-# 8. Postavenie testovacej siete
-cd ~/Documents/bp-ids/compose
-docker compose build
-docker compose up -d
+cd ../compose && docker compose up -d --build
 ```
 
-## 6. Ako spúšťať testy (bežná prevádzka)
+Poznámka: `06_install_gh_and_login.sh` je len nastavenie GitHubu,
+`07b`/`08` sú opravné kroky z pôvodného ladenia a pri čistej inštalácii nie sú potrebné.
+
+## 6. Spustenie experimentu (kap. 3.6, 4.5)
 
 ```bash
-# Ak boli kontajnery vypnute (napr. po restarte PC), najprv:
-cd ~/Documents/bp-ids/compose && docker compose up -d
-
-# Spusti vsetky utocne scenare naraz (cca 3-4 minuty vratane baseline):
-docker exec attacker bash /scripts/attacks/run_all.sh
-
-# Vyhodnot vysledky (na hostitelovi, potrebuje pristup k eve.json):
 cd ~/Documents/bp-ids
-python3 scripts/evaluate.py
-
-# Zobrazit dashboard s alertami:
-# otvor v prehliadaci http://localhost:5636
+./scripts/09_set_profile.sh before
+./scripts/run_experiment.sh before 3     # ~3 × 9 min
+./scripts/09_set_profile.sh after
+./scripts/run_experiment.sh after 3
+cat results/comparison.md                # tabuľka pred/po pre kap. 5.3
 ```
 
-## 7. Dosiahnuté výsledky (finálny čistý beh)
+Jeden beh: `client` spustí benígnu prevádzku → `attacker` vykoná
+`run_all.sh` (baseline 3 min, potom scenáre s 10 s pauzami) → benígna
+prevádzka sa zastaví → `evaluate.py` → po všetkých behoch `aggregate.py`.
+Medzi profilmi **nespúšťaj `suricata-update`** (zmenila by sa ET sada).
 
-| Scenár | Kategória | Detekované | Latencia (s) | Počet alertov | Top signatúra |
-|---|---|---|---|---|---|
-| baseline (benígna prevádzka, ~3 min) | — | — (FP zdroj) | — | **66 FP** | `GPL ICMP PING *NIX` (30×), `SURICATA HTTP Response excessive header repetition` (30×) |
-| Port scan | recon | ✅ ÁNO | 0,101 | 47 | `ET SCAN Nmap Scripting Engine User-Agent Detected` |
-| **Low-and-slow port scan** | recon (evasion) | ❌ **NIE** | — | **0** | *(zámerne — FN scenár, viz sekcia 9)* |
-| DoS SYN flood | dos | ✅ ÁNO | 0,023 | 1728 | `SURICATA STREAM 3way handshake...` |
-| SSH brute-force | credential access | ✅ ÁNO | 0,312 | 2 | `ET SCAN LibSSH...BruteForce` + vlastné `LOCAL POLICY` pravidlo |
-| SQL injection (DVWA) | web | ✅ ÁNO | 0,155 | 142 | vlastné `LOCAL POLICY External access to DVWA...` (89×) + `ET WEB_SERVER SQL Errors` |
-| Web sken (nikto) | web | ✅ ÁNO | 0,124 | 759 | `ET WEB_SERVER Script tag in URI...XSS` |
+Alerty v dashboarde: http://127.0.0.1:5636
 
-**Súhrnné metriky:**
-- **Recall = 5/6 = 83,3 %** (jeden scenár — low-and-slow scan — bol zámerne
-  navrhnutý tak, aby unikol detekcii)
-- **Precision = 97,6 %** (2678 TP alertov / 66 FP alertov, oba merané na
-  úrovni jednotlivých alertov — pozri metodologické obmedzenia nižšie)
-- **Latencia detekcie:** 0,02–0,31 s pri všetkých úspešne detekovaných útokoch
+## 7. Testovacie scenáre (kap. 3.5)
 
-**Konkrétny dôkaz úspešného útoku (pre screenshoty do práce):** sqlmap pri
-SQL injection scenári reálne vydumpol tabuľku `users` z DVWA databázy vrátane
-hashov hesiel (`admin`, `gordonb`, `1337`, `pablo`, `smithy`) — ukazuje plný
-reťazec útoku od pokusu po únik dát, a zároveň že Suricata tento útok súčasne
-zachytila v reálnom čase (vrátane vlastného politikového pravidla).
+| # | Scenár | Nástroj | MITRE ATT&CK | Typ |
+|---|---|---|---|---|
+| 0 | baseline_benign | client (web, DNS, SSH, FTP) | — | benígne okno (FP/TN) |
+| 1 | portscan | nmap `-sS -T4 -p-` + `-sV -A` | TA0043/T1595, TA0007/T1046 | základný |
+| 2 | dos_synflood | hping3 `--flood` 20 s | TA0040/T1498 (T1499.001) | základný |
+| 3 | ssh_bruteforce | hydra | TA0006/T1110.001 | základný |
+| 4 | web_sqli | sqlmap → DVWA | TA0001/T1190 | základný |
+| 5 | web_scan_nikto | nikto → DVWA | TA0043/T1595.002 | základný |
+| 6a | portscan_fast_control | nmap `-p 1-25` | TA0043/T1595 | základný (kontrola k 6) |
+| 6 | portscan_low_and_slow | nmap `-p 1-25 --scan-delay 3s` | TA0043/T1595 | **evázny** |
+| 7 | portscan_fragmented | nmap `-f -p 1-25` | TA0043/T1595 | **evázny** |
 
-## 8. Metodologické obmedzenia (dôležité pre obhajobu!)
+## 8. Metodika vyhodnotenia (kap. 3.6)
 
-Pri code review tejto práce padli viaceré opodstatnené pripomienky k
-metodike merania. Namiesto ich zametenia pod koberec ich tu explicitne
-pomenúvame — presne toto komisia oceňuje viac než falošne dokonalé čísla:
+Podrobne v docstringu `scripts/evaluate.py`. V skratke:
 
-1. **Precision sa počíta na úrovni jednotlivých alertov, nie útokov.**
-   TP = "akýkoľvek alert vygenerovaný v časovom okne známeho útoku". To
-   znamená, že aj menej relevantný/redundantný alert počas útoku sa ráta ako
-   true positive. Číslo 97,6 % je preto potrebné interpretovať ako
-   "podiel alertov vzniknutých počas útokov voči alertom vzniknutým počas
-   legitímnej prevádzky", nie ako presnosť klasifikácie jednotlivých typov
-   útokov.
-2. **Recall na úrovni scenárov je binárny (detekované áno/nie), nie
-   klasifikačný.** Nehovorí nič o tom, či IDS rozpoznal *správny* typ
-   útoku — len či sa v danom okne objavil aspoň jeden alert. Čestnejšia
-   formulácia: "5 z 6 testovaných tried útokov vyvolalo aspoň jeden
-   relevantný alert".
-3. **Baseline (FP meranie) bol pôvodne len ~10 sekúnd** (prvá verzia), čo
-   bola príliš malá vzorka na vierohodný odhad false-positive rate. Bol
-   predĺžený na ~3 minúty s rozmanitejšou prevádzkou (HTTP requesty na
-   viacero stránok, opakované legitímne SSH prihlásenia, anonymný FTP
-   listing).
-4. **Iba signature/threshold-based detekcia.** Práca hovorí o "návrhu a
-   implementácii IDS", ale jadrom je nasadenie a konfigurácia hotového IDS
-   (Suricata) s prevažne hotovými pravidlami (ET-open). Vlastný prínos je v
-   architektúre testbedu, voľbe HOME_NET/EXTERNAL_NET, dvoch vlastných
-   pravidlách (sekcia 3) a návrhu evázneho scenára (sekcia 9) — nie vo
-   vlastnom detekčnom algoritme. Táto hranica by mala byť v práci explicitne
-   pomenovaná, nie skrývaná.
-5. **sqlmap medzi behmi cachuje nájdenú injekčnú techniku** (v
-   `~/.local/share/sqlmap`) — opakovaný beh proti tomu istému cieľu preskočí
-   heuristické testovanie a trvá len desatiny sekundy namiesto ~11 s plného
-   testu. Opravené pomocou `--flush-session`, aby bolo časovanie
-   reprodukovateľné medzi behmi.
+- **Ground truth:** `attack_log.jsonl` (čas začiatku/konca, zdrojová a
+  cieľová IP, nástroj, MITRE technika).
+- **Priradenie alertov podľa IP:** IP útočníka v okne scenára = TP alert;
+  IP klienta kedykoľvek = FP alert; útočník mimo okien = nepriradený.
+- **Matica zámen na úrovni udalostí:** útočný scenár s ≥ 1 alertom = TP,
+  bez alertu = FN; 10 s sloty čistého benígneho okna s alertom = FP,
+  bez alertu = TN. Precision, recall, F1, FPR.
+- **Evázne scenáre** sa vyhodnocujú zvlášť (nezapočítavajú sa do recall).
+- **Doplnkovo:** latencia (prvý alert − začiatok), precision na úrovni
+  alertov, FP alerty za minútu.
+- **Opakovateľnosť:** 3 behy na profil, priemer ± smerodajná odchýlka.
+- **Kritériá úspešnosti** (navrhnuté pre kap. 3.6):
+  1. všetky základné scenáre detekované vo všetkých behoch (recall = 100 %),
+  2. po ladení pokles FP alertov za minútu aspoň o 80 % pri zachovanom recall,
+  3. evázne scenáre vyhodnotené zvlášť, s vysvetlením príčiny výsledku.
 
-## 9. Scenár 6: Low-and-slow port scan (zámerný False Negative)
+## 9. Výsledky (kap. 5)
 
-Na odporúčanie z code review bol pridaný scenár, ktorý IDS **cielene
-nezachytí** — bez toho totiž recall 100 % pôsobí triviálne (pri 52 830
-pravidlách a "hlučných" nástrojoch typu nmap/nikto je takmer isté, že aspoň
-jedno pravidlo niečo zachytí).
+### Nové behy
 
-**Princíp — uniká DVOM detekčným vrstvám naraz, nie len jednej:**
+*Čakajú na spustenie* — po `run_experiment.sh` sa tabuľky vygenerujú do
+`results/aggregate_*.md` a `results/comparison.md`. Čísla do práce preberaj
+**len odtiaľ**, nikdy ručne z terminálu.
 
-Podľa `metrics.csv` je bežný (rýchly) port scan (scenár `portscan`) detekovaný
-**predovšetkým** cez ET signatúru `ET SCAN Nmap Scripting Engine User-Agent
-Detected` (25× z 47 alertov) — tá pochádza z prepínačov `-sV`/`-A` (service/
-OS detekcia cez NSE skripty, ktoré do HTTP requestu vložia rozpoznateľný
-User-Agent). Naše vlastné prahové pravidlo (sekcia 3, bod 2) sa v tomto behu
-na `portscan` okne výrazne neuplatnilo — zaujímavo sa namiesto toho spustilo
-v okne scenára `ssh_bruteforce` (pozri poznámku nižšie).
+### Historický beh 2026-09-23 (pôvodná metodika, prepočítaný)
 
-`06_portscan_slow.sh` preto zámerne obchádza **obe** vrstvy naraz:
+| Scenár | Detekované | Latencia (s) | Alertov | Prvý alert / najčastejšia signatúra |
+|---|---|---|---|---|
+| baseline (112 s, IP útočníka) | — | — | 66 FP | ping *NIX 30×, DVWA header repetition 30× |
+| portscan | áno | 0,100 | 47 | NSE User-Agent 25×, sondy DB portov, 9000002 2× |
+| low-and-slow (3 porty) | **nie** | — | 0 | — |
+| dos_synflood | áno | 0,023 | 1728 | prvý: 9000002; STREAM anomálie 1712× |
+| ssh_bruteforce | áno | 0,312 | 2 | 9000002, ET LibSSH BruteForce |
+| web_sqli | áno | 0,155 | 142 | 9000001 89×, ET SQL Errors 18× |
+| web_scan_nikto | áno | 0,124 | 759 | prvý: 9000002; ET XSS 267× |
 
-1. **Vynecháva `-sV`/`-A`** → žiadne NSE/User-Agent stopy → ET signatúra
-   založená na User-Agente sa vôbec nemá na čom spustiť.
-2. **Pridáva odstup `--scan-delay 3s` medzi paketmi** → naše vlastné prahové
-   pravidlo (5 SYN paketov v 5-sekundovom okne) tento prah nikdy nedosiahne.
+Precision na úrovni alertov 97,6 %, ale na úrovni udalostí **11 z 12**
+benígnych 10 s slotov malo alert (FPR 91,7 %, precision 31,2 %, F1 47,6 %),
+~19 FP alertov/min. Vysoké alert-level percento bolo dané hlavne SYN
+floodom (64 % všetkých TP alertov). Tento beh motivuje ladenie v kap. 5.3.
 
-Keby scan obišiel len jednu z týchto dvoch vrstiev (napr. holý `-sS` scan bez
-spomalenia), narazil by na prahové pravidlo. Keby bol len spomalený, ale s
-`-sV/-A`, narazil by na ET User-Agent signatúru. Až kombinácia oboch techník
-naraz vedie k reálnemu úniku.
+**Dôkaz úspešného útoku:** sqlmap pri SQLi reálne vydumpol tabuľku `users`
+z DVWA vrátane hashov hesiel (`admin`, `gordonb`, `1337`, `pablo`, `smithy`)
+a Suricata útok súčasne zachytila (vrátane vlastného pravidla 9000001).
 
-**Výsledok:** 0 alertov, útok prešiel bez povšimnutia — reálny, poctivo
-nameraný False Negative.
+### Obmedzenia, ktoré treba v práci pomenovať (5.5)
 
-**Vedľajšie zistenie (dobrý bod do diskusie):** vlastné prahové pravidlo
-"port scan" sa v skutočnosti spustilo na scenári `ssh_bruteforce`, nie na
-scenári `portscan` — hydra pri brute-force útoku otvára viacero paralelných
-SSH spojení rýchlo za sebou, čo tiež spĺňa vzorec "5+ SYN paketov z jedného
-zdroja za 5 sekúnd" na porte 22. Ukazuje to typickú vlastnosť signature/
-threshold-based pravidiel: jedno pravidlo často pokrýva viac tried útoku
-naraz a jeho názov ("port scan") nemusí presne vystihovať, čo reálne
-zachytilo — pravidlo formálne nedetekovalo "skenovanie portov", ale
-"nezvyčajne rýchle nadväzovanie TCP spojení na jeden cieľový port", čo sa
-zhoduje aj s charakterom SSH brute-force útoku. Pri písaní práce je preto
-presnejšie hovoriť o "prahovom pravidle na rýchle opakované TCP spojenia"
-než o "pravidle na detekciu port scanu".
+1. **Signatúrny/prahový prístup.** Jadrom je nasadenie a konfigurácia
+   hotového IDS s prevažne hotovými pravidlami. Vlastný prínos: architektúra
+   testbedu, HOME_NET/EXTERNAL_NET, 3 vlastné pravidlá, ladenie pred/po,
+   evázne scenáre a metodika vyhodnotenia — nie vlastný detekčný algoritmus.
+2. **Recall je binárny** (scenár áno/nie) — nehovorí, či alert zodpovedal
+   správnemu typu útoku.
+3. **Benígna prevádzka je syntetická** a krátka (minúty, nie dni).
+4. **TN je definované cez časové sloty** — iná dĺžka slotu dá iné čísla.
+5. **EveBox** slúži na prehliadanie a správu alertov, nemá plnohodnotné
+   dashboardy; rozšírenie: ELK Stack alebo Wazuh dashboard.
+6. **Kontajnery zdieľajú jadro** hostiteľa (slabšia izolácia ako VM).
+7. **Low-and-slow s odstupom > 12 s** obíde aj pravidlo 9000003 — robustná
+   detekcia vyžaduje behaviorálnu analýzu flow logov s dlhým oknom (SIEM).
 
-**Prečo je to hodnotné pre BP:** demonštruje to konkrétne a merateľné
-obmedzenie signature/threshold-based prístupu, ktoré je vhodné rozvinúť v
-diskusii/závere práce — napr. že doplnenie anomaly-based alebo
-behaviorálnej detekcie (dlhodobé sledovanie počtu unikátnych portov za
-hodinu/deň, nie len za sekundy) by tento typ útoku odhalilo, kým čisto
-signature-based Suricata s krátkymi prahovými oknami nie.
+## 10. Mapovanie na osnovu
 
-## 10. Mapovanie na štruktúru práce
+| Osnova | Kde v projekte |
+|---|---|
+| 3.1 Topológia | sekcia 1, `compose/docker-compose.yml` |
+| 3.2 Umiestnenie senzora | sekcia 1, `scripts/03_configure_suricata.sh` |
+| 3.3 Logovanie, alerting, vizualizácia | EVE JSON, `10_fix_log_rotation.sh`, EveBox |
+| 3.4 Pravidlá | sekcia 3, `rules/` |
+| 3.5 Scenáre | sekcia 7, `scripts/attacks/` |
+| 3.6 Metodika | sekcia 8, `scripts/evaluate.py` (docstring) |
+| 4.1 Virtualizačné prostredie | sekcia 1, `compose/` |
+| 4.2 Inštalácia a konfigurácia IDS | sekcia 5, `scripts/00–05` |
+| 4.3 Pravidlá, evázia | sekcia 3, `rules/tuned/` |
+| 4.4 EveBox | `compose/docker-compose.yml` (služba evebox) |
+| 4.5 Automatizácia scenárov | `scripts/run_experiment.sh`, `run_all.sh`, `lib.sh` |
+| 5.1–5.2 Výsledky a metriky | `results/runs/`, `results/aggregate_*.md` |
+| 5.3 Ladenie pred/po | `results/comparison.md` |
+| 5.4 Evázne scenáre | scenáre 6, 6a, 7 v `results/comparison.md` |
+| 5.5 Diskusia a limity | sekcia 9 (obmedzenia), sekcia 11 |
 
-- **Kap. 3 (Návrh):** topológia v sekcii 1, rozhodnutie HOME_NET/EXTERNAL_NET,
-  výber šiestich reprezentatívnych scenárov (recon, recon-evasion, DoS,
-  credential access, web/SQLi, web sken), návrh vlastných pravidiel (sekcia 3)
-- **Kap. 4 (Implementácia):** sekcia 5 (presné príkazy), odôvodnenie výberu
-  Suricata/Docker/EveBox oproti alternatívam (Snort, Wazuh, ELK) kvôli
-  výkonu, aktuálnosti a dostupnosti disku, popis vlastných pravidiel
-- **Kap. 5 (Testovanie a vyhodnotenie):** tabuľka v sekcii 7, metodika v
-  `scripts/evaluate.py` (docstring na začiatku súboru), **explicitne
-  pomenované obmedzenia v sekcii 8** — presne materiál na podkapitolu
-  "Diskusia výsledkov" zo zadania
+## 11. Problémy, na ktoré sme narazili (diskusia/limity)
 
-## 11. Problémy, na ktoré sme narazili (dobré ako "Diskusia"/"Limitácie" v BP)
+1. **Suricata Ubuntu balík** — `/var/run/suricata` na `tmpfs` bez
+   `systemd-tmpfiles` pravidla. Riešenie: `/etc/tmpfiles.d/suricata.conf`.
+2. **HOME_NET zahŕňal celú testovaciu sieť** (default `172.16.0.0/12`),
+   pravidlá `EXTERNAL_NET → HOME_NET` sa nespúšťali. Riešenie: HOME_NET len
+   na chránené servery.
+3. **sqlmap v `--batch`** akceptoval neprihlásenú session pri presmerovaní
+   na login. Riešenie: `--drop-set-cookie`. Cachovanie techniky medzi behmi:
+   `--flush-session`.
+4. **`eve.json` bez rotácie** — narástol na 4,3 GB, po „oprave“
+   `rotate-interval: day` opäť na 1,47 GB. Ten parameter rotuje len pri
+   súbore s časovým vzorom v mene; pri statickom `eve.json` nerobí nič.
+   Riešenie: `logrotate` + SIGHUP (`10_fix_log_rotation.sh`).
+5. **`detection_filter` → 2,3 milióna alertov** na jeden SYN flood.
+   Riešenie: `threshold:type both`.
+6. **Nekonzistentné čísla README vs. `metrics.csv`** — ručné prepisovanie
+   z terminálu. Poučenie: čísla len z vygenerovaných súborov.
+7. **Záver z orezaného súhrnu** — `metrics.csv` ukazoval len top-3
+   signatúry, z čoho vznikol nesprávny záver o pravidle 9000002. Riešenie:
+   `signatures.csv` s úplným rozpisom.
+8. **Low-and-slow skenoval len 3 porty** — pod prahom pravidla aj bez
+   spomalenia, evázia nebola preukázaná. Riešenie: 25 portov + kontrolný
+   scenár 6a.
+9. **Benígna prevádzka z IP útočníka** — FP sa nedali odlíšiť počas útokov.
+   Riešenie: samostatný kontajner `client`.
+10. **Porty publikované na 0.0.0.0** (SSH so slabým heslom, EveBox bez
+    autentifikácie dostupné z LAN). Riešenie: väzba na 127.0.0.1.
 
-1. **Suricata Ubuntu balík mal chybu v post-install skripte** — `/var/run/suricata`
-   je na `tmpfs` a balík nemal `systemd-tmpfiles` pravidlo na jeho opätovné
-   vytvorenie po reštarte. Riešenie: vlastné pravidlo v `/etc/tmpfiles.d/`.
-2. **HOME_NET zahŕňal celú testovaciu sieť** (default `172.16.0.0/12` pokrýva aj
-   Docker subnet 172.28.0.0/24), takže útočník aj obeť boli v tej istej "dôveryhodnej"
-   zóne a pravidlá pre `EXTERNAL_NET → HOME_NET` sa vôbec nespúšťali. Riešenie:
-   HOME_NET explicitne len na chránené servery.
-3. **sqlmap v `--batch` režime omylom akceptoval neprihlásenú session** pri
-   presmerovaní na login stránku namiesto použitia nášho prihláseného cookie.
-   Riešenie: `--drop-set-cookie` flag.
-4. **`eve.json` narástol za 2 dni nepretržitej prevádzky na 4,3 GB** — chýbala
-   log rotation. Riešenie: `rotate-interval: day` v `suricata.yaml`.
-5. **Vlastné prahové pravidlo pôvodne používalo `detection_filter`**, ktoré
-   generuje alert na *každý* ďalší paket po dosiahnutí prahu (nie raz za
-   okno) — pri 20-sekundovom SYN floode to spôsobilo 2,3 milióna alertov.
-   Riešenie: `threshold:type both` namiesto `detection_filter`.
-6. **Nekonzistentné čísla medzi README a `metrics.csv`** — pri jednom z
-   predchádzajúcich behov bolo README aktualizované ručne z terminálového
-   výstupu a následne prebehol ešte jeden (nezdokumentovaný) beh, ktorého
-   výsledky sa dostali do commitnutých súborov namiesto pôvodných. Odhalené
-   pri externom code review. Poučenie: čísla do práce preberať vždy priamo
-   z `metrics.csv` tesne pred odovzdaním, nikdy ručne prepisovať z chatu/
-   terminálu.
+## 12. Návrhy na rozšírenie
 
-## 12. Návrhy na ďalšie rozšírenie (voliteľné)
-
-- FTP brute-force scenár (treba pridať neanonymného FTP používateľa do victim)
-- Porovnanie s vypnutými/zapnutými rôznymi kategóriami ET pravidiel
-- Porovnanie Suricata vs. Snort/Zeek na tom istom datasete (vyššia námaha)
-- Jednoduchý anomaly/prahový detektor ako doplnok k signature-based prístupu,
-  porovnanie účinnosti (vyššia námaha — priamo nadväzuje na zistenie v
-  sekcii 9)
-- Automatizované screenshoty z EveBox dashboardu pre každý scenár
+- Behaviorálna detekcia pomalých scanov nad flow logmi (Ring et al., 2018)
+- Pokročilejšia evázia: prekrývajúce sa fragmenty, TTL triky (Ptacek & Newsham)
+- Porovnanie Suricata vs. Snort 3 / Zeek na rovnakých scenároch
+- ELK Stack alebo Wazuh dashboard namiesto EveBox
+- FTP brute-force scenár, dlhšia/realistickejšia benígna prevádzka

@@ -1,0 +1,26 @@
+# Vlastne Suricata pravidla - PROFIL "PO LADENI" (kap. 4.3 a 5.3)
+# Autor: Lukas Krempasky
+#
+# Zmeny oproti rules/local.rules (profil "pred"):
+#   - sid 9000002 rev 2: prah zvyseny z 5 na 10 SYN / 5 s (odstranenie FP
+#     z beznej FTP/SSH prevadzky; rychle utoky maju stovky az tisice SYN)
+#   - sid 9000003 (NOVE): detekcia pomaleho skenovania (evazia casom)
+#   - potlacenie hlucnych informacnych ET signatur: threshold.config
+
+# 1) Politikove pravidlo - bez zmeny
+alert http $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL POLICY External access to DVWA vulnerable test endpoint"; flow:established,to_server; http.uri; content:"/vulnerabilities/"; startswith; classtype:policy-violation; sid:9000001; rev:1;)
+
+# 2) Rychle opakovane TCP spojenia - vyladeny prah
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL POLICY Fast repeated TCP connection attempts (threshold)"; flow:to_server; flags:S,CE; threshold:type both, track by_src, count 10, seconds 5; classtype:attempted-recon; sid:9000002; rev:2;)
+
+# 3) Pokusy o spojenie na NEPOUZIVANE porty chranenych hostov (slow scan)
+#    Princip: chranene servery maju definovanu mnozinu sluzieb
+#    (21, 22, 53, 80 a pasivne FTP 30000-30010 - pozri compose/victim).
+#    Legitimny klient sa na ine porty nepripaja, skener ano. Kedze takyto
+#    SYN je podozrivy sam o sebe, moze mat pravidlo dlhe okno (120 s) a
+#    nizky prah bez rizika FP z beznej prevadzky - a zachyti aj skenovanie
+#    spomalene pod prah pravidla 2 (scenar 6, --scan-delay 3s).
+#    Limit (diskusia 5.5): utocnik s odstupom > 12 s medzi paketmi
+#    (napr. nmap -T0) by prah 10/120 s opat obisiel; dlhsie okna uz
+#    vyzaduju behavioralnu/anomalnu detekciu mimo signatur.
+alert tcp $EXTERNAL_NET any -> $HOME_NET ![21,22,53,80,30000:30010] (msg:"LOCAL POLICY Connection attempts to unused ports (possible slow scan)"; flow:to_server; flags:S,CE; threshold:type both, track by_src, count 10, seconds 120; classtype:attempted-recon; sid:9000003; rev:1;)

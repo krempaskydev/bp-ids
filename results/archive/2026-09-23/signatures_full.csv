@@ -1,0 +1,157 @@
+scenario,role,sid,signature,count
+baseline_benign,baseline,2221036,SURICATA HTTP Response excessive header repetition,30
+baseline_benign,baseline,2100366,GPL ICMP PING *NIX,30
+baseline_benign,baseline,2002825,ET INFO POSSIBLE Web Crawl using Curl,2
+baseline_benign,baseline,2260001,SURICATA Applayer Wrong direction first Data,2
+baseline_benign,baseline,2001219,ET SCAN Potential SSH Scan,1
+baseline_benign,baseline,9000002,LOCAL POLICY Possible fast TCP port scan (threshold),1
+portscan,attack,2009358,ET SCAN Nmap Scripting Engine User-Agent Detected (Nmap Scripting Engine),25
+portscan,attack,2200025,SURICATA ICMPv4 unknown code,4
+portscan,attack,2230002,SURICATA TLS invalid record type,4
+portscan,attack,9000002,LOCAL POLICY Possible fast TCP port scan (threshold),2
+portscan,attack,2018489,ET SCAN NMAP OS Detection Probe,2
+portscan,attack,2260002,SURICATA Applayer Detect protocol only one direction,2
+portscan,attack,2260000,SURICATA Applayer Mismatch protocol both directions,2
+portscan,attack,2010937,ET SCAN Suspicious inbound to mySQL port 3306,1
+portscan,attack,2010939,ET SCAN Suspicious inbound to PostgreSQL port 5432,1
+portscan,attack,2010936,ET SCAN Suspicious inbound to Oracle SQL port 1521,1
+portscan,attack,2002910,ET SCAN Potential VNC Scan 5800-5820,1
+portscan,attack,2010935,ET SCAN Suspicious inbound to MSSQL port 1433,1
+portscan,attack,2260001,SURICATA Applayer Wrong direction first Data,1
+dos_synflood,attack,2210008,SURICATA STREAM 3way handshake SYN resend different seq on SYN recv,857
+dos_synflood,attack,2210004,SURICATA STREAM 3way handshake SYNACK resend with different ack,855
+dos_synflood,attack,2210044,SURICATA STREAM Packet with invalid timestamp,11
+dos_synflood,attack,9000002,LOCAL POLICY Possible fast TCP port scan (threshold),4
+dos_synflood,attack,2210010,SURICATA STREAM 3way handshake wrong seq wrong ack,1
+ssh_bruteforce,attack,9000002,LOCAL POLICY Possible fast TCP port scan (threshold),1
+ssh_bruteforce,attack,2006546,ET SCAN LibSSH Based Frequent SSH Connections Likely BruteForce Attack,1
+web_sqli,attack,9000001,LOCAL POLICY External access to DVWA vulnerable test endpoint,89
+web_sqli,attack,2016672,ET WEB_SERVER SQL Errors in HTTP 200 Response (error in your SQL syntax),18
+web_sqli,attack,2017808,ET WEB_SERVER Possible MySQL SQLi Attempt Information Schema Access,8
+web_sqli,attack,2016935,ET WEB_SERVER SQL Injection Select Sleep Time Delay,7
+web_sqli,attack,2053467,ET WEB_SERVER Possible SQL Injection SELECT CAST in HTTP URI,6
+web_sqli,attack,2017337,ET WEB_SERVER ATTACKER SQLi - SELECT and Schema Columns M1,4
+web_sqli,attack,2008538,ET SCAN Sqlmap SQL Injection Scan,2
+web_sqli,attack,2011041,ET WEB_SERVER MYSQL Benchmark Command in URI to Consume Server Resources,2
+web_sqli,attack,2006446,ET WEB_SERVER Possible SQL Injection Attempt UNION SELECT in HTTP URI,1
+web_sqli,attack,2009714,ET WEB_SERVER Script tag in URI Possible Cross Site Scripting Attempt,1
+web_sqli,attack,2009815,ET WEB_SERVER Attempt To Access MSSQL xp_cmdshell Stored Procedure Via URI,1
+web_sqli,attack,2049400,ET WEB_SERVER /etc/passwd Detected in URI,1
+web_sqli,attack,9000002,LOCAL POLICY Possible fast TCP port scan (threshold),1
+web_sqli,attack,2011037,ET WEB_SERVER Possible Attempt to Get SQL Server Version in URI using SELECT VERSION,1
+web_scan_nikto,attack,2009714,ET WEB_SERVER Script tag in URI Possible Cross Site Scripting Attempt,267
+web_scan_nikto,attack,2049400,ET WEB_SERVER /etc/passwd Detected in URI,152
+web_scan_nikto,attack,2010920,ET WEB_SERVER Exploit Suspected PHP Injection Attack (cmd=),41
+web_scan_nikto,attack,2101402,GPL EXPLOIT iissamples access,28
+web_scan_nikto,attack,2009362,ET WEB_SERVER /system32/ in Uri - Possible Protected Directory Access Attempt,23
+web_scan_nikto,attack,2009361,ET WEB_SERVER cmd.exe In URI - Possible Command Execution Attempt,22
+web_scan_nikto,attack,2017442,ET WEB_SERVER PHP ENV SuperGlobal in URI,17
+web_scan_nikto,attack,2021390,ET WEB_SPECIFIC_APPS WEB-PHP RCE PHPBB 2004-1315,14
+web_scan_nikto,attack,2101245,GPL EXPLOIT ISAPI .idq access,13
+web_scan_nikto,attack,2019526,ET WEB_SERVER WEB-PHP phpinfo access,11
+web_scan_nikto,attack,2100987,GPL EXPLOIT .htr access,8
+web_scan_nikto,attack,2100977,GPL EXPLOIT .cnf access,8
+web_scan_nikto,attack,2100981,GPL EXPLOIT unicode directory traversal attempt,8
+web_scan_nikto,attack,2101244,GPL EXPLOIT ISAPI .idq attempt,6
+web_scan_nikto,attack,2017440,ET WEB_SERVER PHP SESSION SuperGlobal in URI,6
+web_scan_nikto,attack,2016184,ET WEB_SERVER ColdFusion administrator access,5
+web_scan_nikto,attack,2101018,GPL EXPLOIT iisadmpwd attempt,5
+web_scan_nikto,attack,2101129,GPL WEB_SERVER .htaccess access,4
+web_scan_nikto,attack,2260002,SURICATA Applayer Detect protocol only one direction,4
+web_scan_nikto,attack,2030337,ET EXPLOIT VMware Spring Cloud Directory Traversal (CVE-2020-5410),4
+web_scan_nikto,attack,2101242,GPL EXPLOIT ISAPI .ida access,3
+web_scan_nikto,attack,2221036,SURICATA HTTP Response excessive header repetition,3
+web_scan_nikto,attack,2100993,GPL WEB_SERVER iisadmin access,3
+web_scan_nikto,attack,2101401,GPL EXPLOIT /msadc/samples/ access,3
+web_scan_nikto,attack,2101013,GPL EXPLOIT fpcount access,3
+web_scan_nikto,attack,2002901,ET WEB_SPECIFIC_APPS PHP Aardvark Topsites PHP CONFIG PATH Remote File Include Attempt,3
+web_scan_nikto,attack,2101071,GPL WEB_SERVER .htpasswd access,2
+web_scan_nikto,attack,2101145,GPL WEB_SERVER /~root access,2
+web_scan_nikto,attack,2010766,ET INFO Proxy TRACE Request - inbound,2
+web_scan_nikto,attack,2101016,GPL WEB_SERVER global.asa access,2
+web_scan_nikto,attack,2101877,GPL WEB_SERVER printenv access,2
+web_scan_nikto,attack,2221010,SURICATA HTTP unable to match response to request,2
+web_scan_nikto,attack,2009485,ET WEB_SERVER /etc/shadow Detected in URI,2
+web_scan_nikto,attack,2100982,GPL EXPLOIT unicode directory traversal attempt,2
+web_scan_nikto,attack,2101403,GPL WEB_SERVER viewcode access,2
+web_scan_nikto,attack,2011564,ET WEB_SPECIFIC_APPS PHP Classifieds class.phpmailer.php lang_path Parameter Remote File Inclusion Attempt,2
+web_scan_nikto,attack,2002879,ET WEB_SPECIFIC_APPS PHP phpMyAgenda rootagenda Remote File Include Attempt,2
+web_scan_nikto,attack,2008897,ET WEB_SPECIFIC_APPS MODx CMS snippet.reflect.php reflect_base Remote File Inclusion,2
+web_scan_nikto,attack,2017441,ET WEB_SERVER PHP REQUEST SuperGlobal in URI,2
+web_scan_nikto,attack,9000002,LOCAL POLICY Possible fast TCP port scan (threshold),1
+web_scan_nikto,attack,2002677,ET SCAN Nikto Web App Scan in Progress,1
+web_scan_nikto,attack,2101256,GPL EXPLOIT CodeRed v2 root.exe access,1
+web_scan_nikto,attack,2049401,ET WEB_SERVER /etc/hosts Detected in URI,1
+web_scan_nikto,attack,2101108,GPL WEB_SERVER Tomcat server snoop access,1
+web_scan_nikto,attack,2100952,GPL WEB_SERVER author.exe access,1
+web_scan_nikto,attack,2100958,GPL WEB_SERVER service.cnf access,1
+web_scan_nikto,attack,2100961,GPL WEB_SERVER services.cnf access,1
+web_scan_nikto,attack,2100965,GPL WEB_SERVER writeto.cnf access,1
+web_scan_nikto,attack,2011141,ET WEB_SERVER PHP Easteregg Information-Disclosure (phpinfo),1
+web_scan_nikto,attack,2011144,ET WEB_SERVER PHP Easteregg Information-Disclosure (funny-logo),1
+web_scan_nikto,attack,2011142,ET WEB_SERVER PHP Easteregg Information-Disclosure (php-logo),1
+web_scan_nikto,attack,2011143,ET WEB_SERVER PHP Easteregg Information-Disclosure (zend-logo),1
+web_scan_nikto,attack,2101487,GPL EXPLOIT /iisadmpwd/aexp2.htr access,1
+web_scan_nikto,attack,2102073,GPL WEB_SERVER globals.pl access,1
+web_scan_nikto,attack,2049402,ET WEB_SERVER .bash_history Detected in URI,1
+web_scan_nikto,attack,2101874,GPL WEB_SERVER Oracle Java Process Manager access,1
+web_scan_nikto,attack,2010963,ET WEB_SERVER SELECT USER SQL Injection Attempt in URI,1
+web_scan_nikto,attack,2100953,GPL EXPLOIT administrators.pwd access,1
+web_scan_nikto,attack,2100951,GPL WEB_SERVER authors.pwd access,1
+web_scan_nikto,attack,2100959,GPL WEB_SERVER service.pwd,1
+web_scan_nikto,attack,2016182,ET WEB_SERVER ColdFusion componentutils access,1
+web_scan_nikto,attack,2011696,ET WEB_SPECIFIC_APPS Possible JBoss JMX Console Beanshell Deployer WAR Upload and Deployment Exploit Attempt,1
+web_scan_nikto,attack,2009317,ET WEB_SPECIFIC_APPS DesktopOnNet don3_requiem.php app_path Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2009318,ET WEB_SPECIFIC_APPS DesktopOnNet frontpage.php app_path Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2009931,ET WEB_SPECIFIC_APPS Possible OpenSiteAdmin pageHeader.php Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2010475,ET WEB_SPECIFIC_APPS KR-Web krgourl.php DOCUMENT_ROOT Parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2009312,ET WEB_SPECIFIC_APPS WeBid ST_platforms.php include_path Parameter Local File Inclusion,1
+web_scan_nikto,attack,2012795,ET WEB_SPECIFIC_APPS Golem Gaming Portal root_path Parameter Remote File inclusion Attempt,1
+web_scan_nikto,attack,2009384,ET WEB_SPECIFIC_APPS Joomla Dada Mail Manager Component config.dadamail.php GLOBALS Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2009391,ET WEB_SPECIFIC_APPS Joomla Onguma Time Sheet Component onguma.class.php mosConfig_absolute_path Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2009369,ET WEB_SPECIFIC_APPS Joomla Simple RSS Reader admin.rssreader.php mosConfig_live_site Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2012369,ET WEB_SPECIFIC_APPS Joomla swMenuPro ImageManager.php Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2010485,ET WEB_SPECIFIC_APPS phptraverse mp3_id.php GLOBALS Parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2210033,SURICATA STREAM FIN1 invalid ack,1
+web_scan_nikto,attack,2210045,SURICATA STREAM Packet with invalid ack,1
+web_scan_nikto,attack,2210032,SURICATA STREAM FIN1 FIN with wrong seq,1
+web_scan_nikto,attack,2010260,ET WEB_SPECIFIC_APPS Joomla AjaxChat Component ajcuser.php GLOBALS Parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2009933,ET WEB_SPECIFIC_APPS Possible Mambo/Joomla! com_koesubmit Component 'koesubmit.php' Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2012013,ET WEB_SPECIFIC_APPS Mambo Component com_smf smf.php Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2009051,ET WEB_SPECIFIC_APPS PHPOF DB_AdoDB.Class.PHP PHPOF_INCLUDE_PATH parameter Remote File Inclusion,1
+web_scan_nikto,attack,2010354,ET WEB_SPECIFIC_APPS Achievo debugger.php config_atkroot parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2008833,ET WEB_SPECIFIC_APPS Enthusiast path parameter Remote File Inclusion,1
+web_scan_nikto,attack,2010355,ET WEB_SPECIFIC_APPS OBOphiX fonctions_racine.php chemin_lib parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2009892,ET WEB_SPECIFIC_APPS PHP-Paid4Mail RFI attempt,1
+web_scan_nikto,attack,2009316,ET WEB_SPECIFIC_APPS YapBB class_yapbbcooker.php cfgIncludeDirectory Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2010197,ET WEB_SPECIFIC_APPS KingCMS menu.php CONFIG Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2010276,ET WEB_SPECIFIC_APPS ProdLer prodler.class.php sPath Parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2010466,ET WEB_SPECIFIC_APPS PointComma pctemplate.php pcConfig Parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2010362,ET WEB_SPECIFIC_APPS AjaxPortal di.php pathtoserverdata Parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2010473,ET WEB_SPECIFIC_APPS p-Table for WordPress wptable-tinymce.php ABSPATH Parameter RFI Attempt,1
+web_scan_nikto,attack,2009932,ET WEB_SPECIFIC_APPS Possible eFront database.php Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2011274,ET WEB_SPECIFIC_APPS OpenX phpAdsNew phpAds_geoPlugin Parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2010124,ET WEB_SPECIFIC_APPS SERWeb load_lang.php configdir Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2010564,ET WEB_SPECIFIC_APPS Sisplet CMS komentar.php site_path Parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2010125,ET WEB_SPECIFIC_APPS SERWeb main_prepend.php functionsdir Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2011259,ET WEB_SPECIFIC_APPS MAXcms fm_includes_special Parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2011384,ET WEB_SPECIFIC_APPS MAXcms fm_includes_special Parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2010484,ET WEB_SPECIFIC_APPS FormMailer formmailer.admin.inc.php BASE_DIR Parameter Remote File Inclusion Attempt,1
+web_scan_nikto,attack,2009887,ET WEB_SPECIFIC_APPS ProjectButler RFI attempt,1
+web_scan_nikto,attack,2009325,ET WEB_SPECIFIC_APPS phPortal gunaysoft.php icerikyolu Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2009326,ET WEB_SPECIFIC_APPS phPortal gunaysoft.php sayfaid Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2009229,ET WEB_SPECIFIC_APPS TECHNOTE shop_this_skin_path Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2009071,ET WEB_SPECIFIC_APPS phpSkelSite theme parameter remote file inclusion,1
+web_scan_nikto,attack,2019524,ET WEB_SPECIFIC_APPS BASE base_stat_common.php remote file include,1
+web_scan_nikto,attack,2014180,ET WEB_SPECIFIC_APPS SAPID get_infochannel.inc.php Remote File inclusion Attempt,1
+web_scan_nikto,attack,2010254,ET WEB_SPECIFIC_APPS Ve-EDIT edit_htmlarea.php highlighter Parameter Remote File Inclusion,1
+web_scan_nikto,attack,2017436,ET WEB_SERVER PHP SERVER SuperGlobal in URI,1
+web_scan_nikto,attack,2056027,ET WEB_SPECIFIC_APPS Wordpress LiteSpeed Cache Plugin debug.log Access Attempt (CVE-2024-44000),1
+benign_background,benign,2221036,SURICATA HTTP Response excessive header repetition,30
+benign_background,benign,2100366,GPL ICMP PING *NIX,30
+benign_background,benign,2002825,ET INFO POSSIBLE Web Crawl using Curl,2
+benign_background,benign,2260001,SURICATA Applayer Wrong direction first Data,2
+benign_background,benign,2001219,ET SCAN Potential SSH Scan,1
+benign_background,benign,9000002,LOCAL POLICY Possible fast TCP port scan (threshold),1
+unattributed_attacker,unattributed,2221036,SURICATA HTTP Response excessive header repetition,1
+unattributed_attacker,unattributed,9000002,LOCAL POLICY Possible fast TCP port scan (threshold),1

@@ -1,8 +1,10 @@
-# Vlastne (custom) Suricata pravidla pre BP testbed
+# Vlastne (custom) Suricata pravidla pre BP testbed - PROFIL "PRED LADENIM"
 # Autor: Lukas Krempasky
 #
-# Tieto pravidla su vlastnym prinosom nad ramec pouzitia hotoveho ET-open
-# rulesetu - riesia specificke potreby nasej topologie (kap. 4/5 BP).
+# Tento subor je vychodiskovy stav (kap. 5.3 "pred"). Vyladena verzia je
+# v rules/tuned/ (local.rules + threshold.config). Profil sa prepina
+# skriptom scripts/09_set_profile.sh before|after.
+#
 # Poznamka: Suricata vyzaduje pravidlo na jednom riadku (prip. s '\'
 # pokracovanim) - viacriadkovy zapis so zalomeniami v zatvorke nie je platny.
 
@@ -14,20 +16,19 @@ alert http $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL POLICY External access
 
 # 2) Prahove (threshold-based) pravidlo na rychle opakovane TCP spojenia:
 #    5 a viac SYN paketov z jedneho zdroja voci chranenym hostom behom
-#    5 sekund. Nazov "port scan" je zjednodusenie - pravidlo v skutocnosti
-#    reaguje na akykolvek zdroj rychlo otvarajuci vela TCP spojeni na jeden
-#    ciel/port, nielen na skenovanie viacerych portov. V nasom behu sa
-#    prakticky prejavilo na scenari ssh_bruteforce (hydra otvara viac
-#    paralelnych SSH spojeni rychlo za sebou), nie vyrazne na bezny
-#    portscan - ten zachytava predovsetkym ET SCAN Nmap Scripting Engine
-#    User-Agent Detected (z -sV/-A), viz README sekcia 9.
-#    ZAMERNE NEZACHYTI "low-and-slow" scan (--scan-delay 3s), pretoze ten
-#    (a) nepouziva -sV/-A (ziadne User-Agent stopy pre ET pravidlo) a
-#    (b) drzi odstup medzi paketmi nad prahove okno tohto pravidla -
-#    demonstruje zakladne obmedzenie prahovo/signature-based detekcie
-#    (viz kap. 5, scenar "low-and-slow port scan").
-#    POZOR: "threshold:type both" (nie "detection_filter") - detection_filter
-#    by generoval alert na KAZDY dalsi paket po dosiahnuti prahu (pri SYN
-#    floode by to bolo miliony alertov). "type both" = alert az po dosiahnuti
-#    poctu v okne A zaroven najviac 1x za toto okno (spravne rate-limitovanie).
+#    5 sekund. Nazov "port scan" je zjednodusenie - pravidlo reaguje na
+#    akykolvek zdroj, ktory rychlo otvara vela TCP spojeni.
+#
+#    Namerane v behu 2026-09-23 (overene priamo z eve.json, nie z top-3
+#    suhrnu v metrics.csv): pravidlo sa spustilo v 6 zo 7 okien - portscan
+#    (2x), SYN flood (4x, prvy alert scenara), SSH brute-force (1x), SQLi
+#    (1x), nikto (1x, prvy alert scenara) - ale aj 1x v benignom baseline
+#    (FTP listing, port 21) a 1x pri prihlasovani do DVWA (dvwa_setup.sh).
+#    Je teda citlive, no za cenu false positives na beznej prevadzke.
+#    Riesenie v profile "po ladeni": count 10 (rules/tuned/local.rules).
+#
+#    "threshold:type both" (nie "detection_filter") - detection_filter by
+#    generoval alert na KAZDY dalsi paket po dosiahnuti prahu (pri SYN
+#    floode milionu alertov). "type both" = alert az po dosiahnuti poctu
+#    v okne A zaroven najviac 1x za toto okno.
 alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL POLICY Possible fast TCP port scan (threshold)"; flow:to_server; flags:S; threshold:type both, track by_src, count 5, seconds 5; classtype:attempted-recon; sid:9000002; rev:1;)
